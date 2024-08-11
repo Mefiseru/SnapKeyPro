@@ -47,7 +47,10 @@ void press_key(SHORT keyCode) {
     input.ki.wVk = keyCode;
 
     // Press the key
-    SendInput(1, &input, sizeof(INPUT));
+    if (!SendInput(1, &input, sizeof(INPUT))) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to send key press input");
+        return;
+    }
 }
 
 // Function to simulate a key release
@@ -58,7 +61,10 @@ void release_key(SHORT keyCode) {
     input.ki.dwFlags = KEYEVENTF_KEYUP;
 
     // Release the key
-    SendInput(1, &input, sizeof(INPUT));
+    if (!SendInput(1, &input, sizeof(INPUT))) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to send key release input");
+        return;
+    }
 }
 
 // Function to simulate a key tap with a specified hold duration
@@ -405,6 +411,9 @@ PyObject* snap_key(PyObject* self, PyObject* args) {
     }
 
     // Handle key release logic
+    char keys_return[32];
+    XQueryKeymap(display, keys_return);
+
     if (heldKeyState.pressed && !(keys_return[held_keycode / 8] & (1 << (held_keycode % 8)))) {
         heldKeyState.pressed = false;
 
@@ -440,21 +449,21 @@ static struct PyModuleDef strafetappermodule = {
 };
 
 PyMODINIT_FUNC PyInit_strafe_tapper(void) {
-    #ifdef __linux__
+#ifdef __linux__
     if (display == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Unable to open X display");
         return NULL;
     }
-    #endif
+#endif
 
     return PyModule_Create(&strafetappermodule);
 }
 
 // Cleanup function to close the display
 void cleanup() {
-    #ifdef __linux__
+#ifdef __linux__
     if (display != NULL) {
         XCloseDisplay(display);
     }
-    #endif
+#endif
 }
